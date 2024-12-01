@@ -4,6 +4,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import streamlit as st
 
 app = FastAPI()
+print("fjsdlfksdflsdfslkfjsdf")
 
 # Load hasBug model and tokenizer
 model_sa = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Review-SentimentAnalysis-BB")
