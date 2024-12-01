@@ -1,36 +1,48 @@
-import os
-import uvicorn
 from fastapi import FastAPI
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from pydantic import BaseModel
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 app = FastAPI()
 
-# Load models and tokenizers
+# Load hasBug model and tokenizer
 model_sa = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Review-SentimentAnalysis-BB")
 tokenizer_sa = AutoTokenizer.from_pretrained("fyp-buglens/Review-SentimentAnalysis-BB")
+
+# Load hasBug model and tokenizer
 model_hb = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Reviews-hasBug-BB")
 tokenizer_hb = AutoTokenizer.from_pretrained("fyp-buglens/Reviews-hasBug-BB")
 
+# Define a Pydantic model for the request body
 class ReviewInput(BaseModel):
     input_text: str
 
+# route for hasbug model prediction
 @app.post("/predict-hasbug")
-async def predict_hasbug(review: ReviewInput):
+async def predict(review: ReviewInput):
+    # Tokenize the input text
     inputs = tokenizer_hb(review.input_text, return_tensors="pt")
+    
+    # Pass the tokenized inputs to the model
     outputs = model_hb(**inputs)
+    
+    # Get the predicted class (logits)
     predicted_class = outputs.logits.argmax().item()
+    
+    # Return the prediction result
     return {"result": predicted_class}
 
+
+# route for sentiment analysis model prediction
 @app.post("/predict-sentiment")
-async def predict_sentiment(review: ReviewInput):
-    print(review.input_text)
+async def predict(review: ReviewInput):
+    # Tokenize the input text
     inputs = tokenizer_sa(review.input_text, return_tensors="pt")
+    
+    # Pass the tokenized inputs to the model
     outputs = model_sa(**inputs)
+    
+    # Get the predicted class (logits)
     predicted_class = outputs.logits.argmax().item()
+    
+    # Return the prediction result
     return {"result": predicted_class}
-
-if __name__ == "__main__":
-    # Get the port number from the environment variable (use 8000 if not set)
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
