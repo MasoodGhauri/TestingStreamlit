@@ -1,6 +1,13 @@
 import streamlit as st
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from urllib.parse import urlparse, parse_qs
+from starlette.middleware.wsgi import WSGIMiddleware
+from urllib.parse import urlparse
+
+# FastAPI application
+api_app = FastAPI()
 
 # Load sentiment analysis model and tokenizer
 model_sa = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Review-SentimentAnalysis-BB")
@@ -10,46 +17,59 @@ tokenizer_sa = AutoTokenizer.from_pretrained("fyp-buglens/Review-SentimentAnalys
 model_hb = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Reviews-hasBug-BB")
 tokenizer_hb = AutoTokenizer.from_pretrained("fyp-buglens/Reviews-hasBug-BB")
 
-# Helper functions for predictions
-def predict_sentiment(text):
-    """Predict sentiment of the input text using the sentiment analysis model."""
-    inputs = tokenizer_sa(text, return_tensors="pt")
+# Pydantic model for input
+class ReviewInput(BaseModel):
+    input_text: str
+
+# Route for predicting sentiment
+@api_app.post("/predict-sentiment")
+async def predict_sentiment(data: ReviewInput):
+    inputs = tokenizer_sa(data.input_text, return_tensors="pt")
     outputs = model_sa(**inputs)
-    return outputs.logits.argmax().item()
+    predicted_class = outputs.logits.argmax().item()
+    return {"result": predicted_class}
 
-def predict_hasbug(text):
-    """Predict if the input text indicates a bug using the hasBug model."""
-    inputs = tokenizer_hb(text, return_tensors="pt")
+# Route for predicting hasBug
+@api_app.post("/predict-hasbug")
+async def predict_hasbug(data: ReviewInput):
+    inputs = tokenizer_hb(data.input_text, return_tensors="pt")
     outputs = model_hb(**inputs)
-    return outputs.logits.argmax().item()
+    predicted_class = outputs.logits.argmax().item()
+    return {"result": predicted_class}
 
-def get_query_params():
-    """Get query parameters from the URL."""
-    url = st.experimental_get_url()
-    query_string = urlparse(url).query
-    return parse_qs(query_string)
+# Integrate FastAPI with Streamlit
+st.title("FastAPI + Streamlit Integration")
 
-# Streamlit app
-st.title("Simulated RESTful API with Streamlit")
+# Display FastAPI results on Streamlit
+st.markdown("### Enter Text to Process")
 
-# Parse query parameters
-query_params = get_query_params()
+# Input text for the API
+input_text = st.text_input("Enter the text to analyze:")
 
-if "input_text" in query_params:
-    input_text = query_params["input_text"][0]
-    
-    if "endpoint" in query_params:
-        endpoint = query_params["endpoint"][0]
+# Endpoint selection
+endpoint = st.selectbox("Select Endpoint", ["predict-sentiment", "predict-hasbug"])
 
-        if endpoint == "predict-sentiment":
-            result = predict_sentiment(input_text)
-            st.markdown(f'<div id="result">Sentiment Prediction: {result}</div>', unsafe_allow_html=True)
-        elif endpoint == "predict-hasbug":
-            result = predict_hasbug(input_text)
-            st.markdown(f'<div id="result">Bug Detection: {result}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div id="result">Invalid endpoint specified</div>', unsafe_allow_html=True)
+if st.button("Submit"):
+    if input_text:
+        # Make a request to the FastAPI endpoint
+        url = f"http://localhost:8000/{endpoint}"
+        payload = {"input_text": input_text}
+
+        try:
+            # Send request to FastAPI
+            response = st.experimental_get_query_params()["fetch"](url, payload)
+            response.raise_for_status()
+
+            # Display the result
+            result = response.json()["result"]
+            st.success(f"API Result: {result}")
+            st.markdown(f'<div id="result">{result}</div>', unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Error: {e}")
     else:
-        st.markdown('<div id="result">No endpoint specified</div>', unsafe_allow_html=True)
-else:
-    st.markdown('<div id="result">Please provide `input_text` and `endpoint` as query parameters</div>', unsafe_allow_html=True)
+        st.warning("Please enter text to analyze.")
+
+# Run FastAPI app as a WSGI app
+st.write("Starting FastAPI...")
+st.experimental_rerun("./api/stapi)
