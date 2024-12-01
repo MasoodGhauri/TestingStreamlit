@@ -24,6 +24,7 @@ async def predict_hasbug(review: ReviewInput):
 
 @app.post("/predict-sentiment")
 async def predict_sentiment(review: ReviewInput):
+    print(review.input_text)
     inputs = tokenizer_sa(review.input_text, return_tensors="pt")
     outputs = model_sa(**inputs)
     predicted_class = outputs.logits.argmax().item()
