@@ -1,11 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import streamlit as st
 
 app = FastAPI()
-print("fjsdlfksdflsdfslkfjsdf")
-userinput= st.text_area("here")
 
 # Load hasBug model and tokenizer
 model_sa = AutoModelForSequenceClassification.from_pretrained("fyp-buglens/Review-SentimentAnalysis-BB")
@@ -32,13 +29,12 @@ async def predict(review: ReviewInput):
     predicted_class = outputs.logits.argmax().item()
     
     # Return the prediction result
-    st.write(predicted_class)
+    return {"result": predicted_class}
 
 
 # route for sentiment analysis model prediction
 @app.post("/predict-sentiment")
 async def predict(review: ReviewInput):
-    print(review.input_text)
     # Tokenize the input text
     inputs = tokenizer_sa(review.input_text, return_tensors="pt")
     
@@ -49,4 +45,4 @@ async def predict(review: ReviewInput):
     predicted_class = outputs.logits.argmax().item()
     
     # Return the prediction result
-    st.write(predicted_class)
+    return {"result": predicted_class}
