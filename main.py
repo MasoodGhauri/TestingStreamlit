@@ -36,6 +36,7 @@ async def predict(review: ReviewInput):
 # route for sentiment analysis model prediction
 @app.post("/predict-sentiment")
 async def predict(review: ReviewInput):
+    print(review.input_text)
     # Tokenize the input text
     inputs = tokenizer_sa(review.input_text, return_tensors="pt")
     
