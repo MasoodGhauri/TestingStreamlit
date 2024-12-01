@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import streamlit as st
 
 app = FastAPI()
 
@@ -29,7 +30,7 @@ async def predict(review: ReviewInput):
     predicted_class = outputs.logits.argmax().item()
     
     # Return the prediction result
-    return {"result": predicted_class}
+    st.write(predicted_class)
 
 
 # route for sentiment analysis model prediction
@@ -45,4 +46,4 @@ async def predict(review: ReviewInput):
     predicted_class = outputs.logits.argmax().item()
     
     # Return the prediction result
-    return {"result": predicted_class}
+    st.write(predicted_class)
